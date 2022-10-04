@@ -130,11 +130,7 @@ def show_ModelNet_examples(clouds, cloud_normals=None, cloud_labels=None):
         # Plot new data feature
         points = clouds[file_i]
         labels = cloud_labels[file_i]
-        if cloud_normals is not None:
-            normals = cloud_normals[file_i]
-        else:
-            normals = None
-
+        normals = cloud_normals[file_i] if cloud_normals is not None else None
         # Rescale points for visu
         points = (points * 1.5 + np.array([1.0, 1.0, 1.0])) * 50.0
 
@@ -352,10 +348,7 @@ def show_input_batch(batch):
         # New title
         title_str = '<([) b_i={:d} (])>    <(,) l_i={:d} (.)>    <(N) n_i={:d} (M)>'.format(b_i, l_i, neighb_i)
         mlab.title(title_str, color=(0, 0, 0), size=0.3, height=0.90)
-        if show_pools:
-            text = 'pools (switch with G)'
-        else:
-            text = 'neighbors (switch with G)'
+        text = 'pools (switch with G)' if show_pools else 'neighbors (switch with G)'
         mlab.text(0.01, 0.01, text, color=(0, 0, 0), width=0.3)
         mlab.orientation_axes()
 

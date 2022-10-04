@@ -54,7 +54,7 @@ def IoU(bbox0, bbox1):
     :return: IoU
     """
 
-    dim = int(len(bbox0)/2)
+    dim = len(bbox0) // 2
     overlap = [max(0, min(bbox0[i+dim], bbox1[i+dim]) - max(bbox0[i], bbox1[i])) for i in range(dim)]
     intersection = 1
     for i in range(dim):
@@ -65,9 +65,7 @@ def IoU(bbox0, bbox1):
         area0 *= (bbox0[i + dim] - bbox0[i])
         area1 *= (bbox1[i + dim] - bbox1[i])
     union = area0 + area1 - intersection
-    if union == 0:
-        return 0
-    return intersection/union
+    return 0 if union == 0 else intersection/union
 
 def do_range_projection(points):
     #https: // github.com / PRBonn / semantic - kitti - api / blob / c4ef8140e21e589e6c795ec548584e13b2925b0f / auxiliary / laserscanvis.py  # L11
@@ -114,9 +112,7 @@ def get_median_center_from_points(points):
     return [x,y,z]
 
 def euclidean_dist(b1, b2):
-    ret_sum = 0
-    for i in range(3):
-        ret_sum += (b1[i] - b2[i])**2
+    ret_sum = sum((b1[i] - b2[i])**2 for i in range(3))
     return  torch.sqrt(ret_sum)
 
 def parse_calibration(filename):
@@ -129,20 +125,18 @@ def parse_calibration(filename):
     """
     calib = {}
 
-    calib_file = open(filename)
-    for line in calib_file:
-        key, content = line.strip().split(":")
-        values = [float(v) for v in content.strip().split()]
+    with open(filename) as calib_file:
+        for line in calib_file:
+            key, content = line.strip().split(":")
+            values = [float(v) for v in content.strip().split()]
 
-        pose = np.zeros((4, 4))
-        pose[0, 0:4] = values[0:4]
-        pose[1, 0:4] = values[4:8]
-        pose[2, 0:4] = values[8:12]
-        pose[3, 3] = 1.0
+            pose = np.zeros((4, 4))
+            pose[0, 0:4] = values[:4]
+            pose[1, 0:4] = values[4:8]
+            pose[2, 0:4] = values[8:12]
+            pose[3, 3] = 1.0
 
-        calib[key] = pose
-
-    calib_file.close()
+            calib[key] = pose
 
     return calib
 
@@ -165,7 +159,7 @@ def parse_poses(filename, calibration):
         values = [float(v) for v in line.strip().split()]
 
         pose = np.zeros((4, 4))
-        pose[0, 0:4] = values[0:4]
+        pose[0, 0:4] = values[:4]
         pose[1, 0:4] = values[4:8]
         pose[2, 0:4] = values[8:12]
         pose[3, 3] = 1.0

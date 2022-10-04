@@ -20,7 +20,7 @@ def associate_instances(previous_instances, current_instances, overlaps,  pose, 
     current_ids = []
 
     current_instances_prev = {}
-    for i, (k, v) in enumerate(previous_instances.items()):
+    for k, v in previous_instances.items():
         #v['kalman_bbox'][0:3] += pose[:3, 3]
         #v['kalman_bbox'][0:3] = torch.matmul(v['kalman_bbox'][0:3],pose[:3, :3])
         #v['bbox'][0:3] = v['kalman_bbox'][0:3] - v['kalman_bbox'][4:]/2
@@ -69,12 +69,12 @@ def associate_instances(previous_instances, current_instances, overlaps,  pose, 
 
     idxes_1, idxes_2 = linear_sum_assignment(association_costs.cpu().detach())
 
-    associations = []
+    associations = [
+        (prev_ids[i1], current_ids[i2])
+        for i1, i2 in zip(idxes_1, idxes_2)
+        if association_costs[i1][i2] < 1e8
+    ]
 
-    for i1, i2 in zip(idxes_1, idxes_2):
-        # max_cost = torch.sum((previous_instances[prev_ids[i1]]['var'][0,-3:]/2)**2)
-        if association_costs[i1][i2] < 1e8:
-            associations.append((prev_ids[i1], current_ids[i2]))
 
     return association_costs, associations
 

@@ -38,8 +38,9 @@ if __name__ == '__main__':
         required=False,
         choices=["train", "valid", "test"],
         default="valid",
-        help='Split to evaluate on. One of ' + str(splits) + '. Defaults to %(default)s',
+        help=f'Split to evaluate on. One of {splits}. Defaults to %(default)s',
     )
+
     parser.add_argument(
         '--data_cfg',
         '-dc',
@@ -167,7 +168,7 @@ if __name__ == '__main__':
     for label_file, pred_file in zip(label_names, pred_names):
         count = count + 1
         if 100 * count / complete > percent:
-            print("{}% ".format(percent), end="", flush=True)
+            print(f"{percent}% ", end="", flush=True)
             percent = percent + 10
         # print("evaluating label ", label_file, "with", pred_file)
         # open label

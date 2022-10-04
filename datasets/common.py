@@ -91,9 +91,9 @@ def batch_grid_subsampling(points, batches_len, features=None, labels=None, ins_
     """
 
     R = None
-    B = len(batches_len)
     if random_grid_orient:
 
+        B = len(batches_len)
         ########################################################
         # Create a random rotation matrix for each batch element
         ########################################################
@@ -320,20 +320,19 @@ class PointCloudDataset(Dataset):
 
         if normals is None:
             return augmented_points, scale, R
-        else:
-            # Anisotropic scale of the normals thanks to cross product formula
-            normal_scale = scale[[1, 2, 0]] * scale[[2, 0, 1]]
-            augmented_normals = np.dot(normals, R) * normal_scale
-            # Renormalise
-            augmented_normals *= 1 / (np.linalg.norm(augmented_normals, axis=1, keepdims=True) + 1e-6)
+        # Anisotropic scale of the normals thanks to cross product formula
+        normal_scale = scale[[1, 2, 0]] * scale[[2, 0, 1]]
+        augmented_normals = np.dot(normals, R) * normal_scale
+        # Renormalise
+        augmented_normals *= 1 / (np.linalg.norm(augmented_normals, axis=1, keepdims=True) + 1e-6)
 
-            if verbose:
-                test_p = [np.vstack([points, augmented_points])]
-                test_n = [np.vstack([normals, augmented_normals])]
-                test_l = [np.hstack([points[:, 2]*0, augmented_points[:, 2]*0+1])]
-                show_ModelNet_examples(test_p, test_n, test_l)
+        if verbose:
+            test_p = [np.vstack([points, augmented_points])]
+            test_n = [np.vstack([normals, augmented_normals])]
+            test_l = [np.hstack([points[:, 2]*0, augmented_points[:, 2]*0+1])]
+            show_ModelNet_examples(test_p, test_n, test_l)
 
-            return augmented_points, augmented_normals, scale, R
+        return augmented_points, augmented_normals, scale, R
 
     def big_neighborhood_filter(self, neighbors, layer):
         """
@@ -375,7 +374,12 @@ class PointCloudDataset(Dataset):
         for block_i, block in enumerate(arch):
 
             # Get all blocks of the layer
-            if not ('pool' in block or 'strided' in block or 'global' in block or 'upsample' in block):
+            if (
+                'pool' not in block
+                and 'strided' not in block
+                and 'global' not in block
+                and 'upsample' not in block
+            ):
                 layer_blocks += [block]
                 continue
 
@@ -489,7 +493,12 @@ class PointCloudDataset(Dataset):
         for block_i, block in enumerate(arch):
 
             # Get all blocks of the layer
-            if not ('pool' in block or 'strided' in block or 'global' in block or 'upsample' in block):
+            if (
+                'pool' not in block
+                and 'strided' not in block
+                and 'global' not in block
+                and 'upsample' not in block
+            ):
                 layer_blocks += [block]
                 continue
 

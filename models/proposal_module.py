@@ -47,7 +47,7 @@ class ProposalModule(nn.Module):
 
         # Random sampling from the votes
         num_seed = point_xyz.shape[1]
-        batch_size = point_xyz.shape[0] 
+        batch_size = point_xyz.shape[0]
         sample_inds = torch.randint(0, num_seed, (batch_size, self.num_proposal), dtype=torch.int).cuda()
 
         # VOTE AGGREGATION / PROPOSAL GENERATION
@@ -67,16 +67,15 @@ class ProposalModule(nn.Module):
         net = self.conv3(net)  # (B, 2 + 4 + num_class, num_proposal)
 
         if self.use_geo_features:
-            proposal_objectness_scores = net [:, 0:2, :]
             #proposal_aggregation_features = net [:, 2:6, :]
             proposal_aggregation_features = net [:, 2:9, :]
             #proposal_sematic_class = net [:, 6:6+self.num_class, :]
             proposal_sematic_class = net [:, 9:9+self.num_class, :]
         else:
-            proposal_objectness_scores = net [:, 0:2, :]
             proposal_aggregation_features = net [:, 2:7, :]
             proposal_sematic_class = net [:, 7:7+self.num_class, :]
-        
 
+
+        proposal_objectness_scores = net [:, 0:2, :]
         #return proposal_sematic_class, proposal_aggregation_features, proposal_objectness_scores, proposal_xyz, proposal_idx, proposal_features
         return proposal_binary_mask, proposal_sematic_class, proposal_aggregation_features, proposal_objectness_scores, proposal_xyz, proposal_idx, proposal_features

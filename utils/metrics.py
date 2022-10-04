@@ -79,23 +79,7 @@ def fast_confusion(true, pred, label_values=None):
     #print(np.max(true * num_classes + pred))
 
     # Start confusion computations
-    if label_values[0] == 0 and label_values[-1] == num_classes - 1:
-
-        # Vectorized confusion
-        vec_conf = np.bincount(true * num_classes + pred)
-
-        # Add possible missing values due to classes not being in pred or true
-        #print(vec_conf.shape)
-        if vec_conf.shape[0] < num_classes ** 2:
-            vec_conf = np.pad(vec_conf, (0, num_classes ** 2 - vec_conf.shape[0]), 'constant')
-        #print(vec_conf.shape)
-
-        # Reshape confusion in a matrix
-        return vec_conf.reshape((num_classes, num_classes))
-
-
-    else:
-
+    if label_values[0] != 0 or label_values[-1] != num_classes - 1:
         # Ensure no negative classes
         if label_values[0] < 0:
             raise ValueError('Unsupported negative classes')
@@ -108,15 +92,17 @@ def fast_confusion(true, pred, label_values=None):
         pred = label_map[pred]
         true = label_map[true]
 
-        # Vectorized confusion
-        vec_conf = np.bincount(true * num_classes + pred)
+    # Vectorized confusion
+    vec_conf = np.bincount(true * num_classes + pred)
 
-        # Add possible missing values due to classes not being in pred or true
-        if vec_conf.shape[0] < num_classes ** 2:
-            vec_conf = np.pad(vec_conf, (0, num_classes ** 2 - vec_conf.shape[0]), 'constant')
+    # Add possible missing values due to classes not being in pred or true
+    #print(vec_conf.shape)
+    if vec_conf.shape[0] < num_classes ** 2:
+        vec_conf = np.pad(vec_conf, (0, num_classes ** 2 - vec_conf.shape[0]), 'constant')
+    #print(vec_conf.shape)
 
-        # Reshape confusion in a matrix
-        return vec_conf.reshape((num_classes, num_classes))
+    # Reshape confusion in a matrix
+    return vec_conf.reshape((num_classes, num_classes))
 
 def metrics(confusions, ignore_unclassified=False):
     """

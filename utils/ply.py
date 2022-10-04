@@ -106,10 +106,6 @@ def parse_mesh_header(plyfile, ext):
             if current_element == 'vertex':
                 line = line.split()
                 vertex_properties.append((line[2].decode(), ext + ply_dtypes[line[1]]))
-            elif current_element == 'vertex':
-                if not line.startswith('property list uchar int'):
-                    raise ValueError('Unsupported faces property : ' + line)
-
     return num_points, num_faces, vertex_properties
 
 
@@ -175,10 +171,13 @@ def read_ply(filename, triangular_mesh=False):
             vertex_data = np.fromfile(plyfile, dtype=properties, count=num_points)
 
             # Get face data
-            face_properties = [('k', ext + 'u1'),
-                               ('v1', ext + 'i4'),
-                               ('v2', ext + 'i4'),
-                               ('v3', ext + 'i4')]
+            face_properties = [
+                ('k', f'{ext}u1'),
+                ('v1', f'{ext}i4'),
+                ('v2', f'{ext}i4'),
+                ('v3', f'{ext}i4'),
+            ]
+
             faces_data = np.fromfile(plyfile, dtype=face_properties, count=num_faces)
 
             # Return vertex data and concatenated faces
@@ -199,16 +198,13 @@ def read_ply(filename, triangular_mesh=False):
 def header_properties(field_list, field_names):
 
     # List of lines to write
-    lines = []
-
-    # First line describing element vertex
-    lines.append('element vertex %d' % field_list[0].shape[0])
+    lines = ['element vertex %d' % field_list[0].shape[0]]
 
     # Properties lines
     i = 0
     for fields in field_list:
         for field in fields.T:
-            lines.append('property %s %s' % (field.dtype.name, field_names[i]))
+            lines.append(f'property {field.dtype.name} {field_names[i]}')
             i += 1
 
     return lines
@@ -248,7 +244,10 @@ def write_ply(filename, field_list, field_names, triangular_faces=None):
     """
 
     # Format list input to the right form
-    field_list = list(field_list) if (type(field_list) == list or type(field_list) == tuple) else list((field_list,))
+    field_list = (
+        list(field_list) if type(field_list) in [list, tuple] else [field_list]
+    )
+
     for i, field in enumerate(field_list):
         if field.ndim < 2:
             field_list[i] = field.reshape(-1, 1)
@@ -276,18 +275,19 @@ def write_ply(filename, field_list, field_names, triangular_faces=None):
     with open(filename, 'w') as plyfile:
 
         # First magical word
-        header = ['ply']
-
-        # Encoding format
-        header.append('format binary_' + sys.byteorder + '_endian 1.0')
+        header = ['ply', f'format binary_{sys.byteorder}_endian 1.0']
 
         # Points properties description
         header.extend(header_properties(field_list, field_names))
 
         # Add faces if needded
         if triangular_faces is not None:
-            header.append('element face {:d}'.format(triangular_faces.shape[0]))
-            header.append('property list uchar int vertex_indices')
+            header.extend(
+                (
+                    'element face {:d}'.format(triangular_faces.shape[0]),
+                    'property list uchar int vertex_indices',
+                )
+            )
 
         # End of header
         header.append('end_header')
@@ -340,16 +340,16 @@ def describe_element(name, df):
     -------
     element: list[str]
     """
-    property_formats = {'f': 'float', 'u': 'uchar', 'i': 'int'}
-    element = ['element ' + name + ' ' + str(len(df))]
+    element = [f'element {name} {len(df)}']
 
     if name == 'face':
         element.append("property list uchar int points_indices")
 
     else:
+        property_formats = {'f': 'float', 'u': 'uchar', 'i': 'int'}
         for i in range(len(df.columns)):
             # get first letter of dtype to infer format
             f = property_formats[str(df.dtypes[i])[0]]
-            element.append('property ' + f + ' ' + df.columns.values[i])
+            element.append(f'property {f} {df.columns.values[i]}')
 
     return element

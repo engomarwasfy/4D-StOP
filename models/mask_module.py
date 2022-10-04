@@ -8,10 +8,9 @@ class MaskModule(nn.Module):
         super().__init__()
 
         mlp_spec = mlp
-        if use_xyz and len(mlp_spec)>0:
+        if use_xyz and mlp_spec:
             mlp_spec[0] += 3
         self.mlp_module = pt_utils.SharedMLP(mlp_spec, bn=bn)
 
     def forward(self, grouped_features):
-        proposal_binary_mask = self.mlp_module(grouped_features)
-        return proposal_binary_mask
+        return self.mlp_module(grouped_features)

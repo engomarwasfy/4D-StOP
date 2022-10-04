@@ -344,7 +344,7 @@ class ModelTester:
                             if test_loader.dataset.name.startswith('Semantic3D'):
                                 ascii_name = join(test_path, 'predictions', test_loader.dataset.ascii_files[cloud_name])
                             else:
-                                ascii_name = join(test_path, 'predictions', cloud_name[:-4] + '.txt')
+                                ascii_name = join(test_path, 'predictions', f'{cloud_name[:-4]}.txt')
                             np.savetxt(ascii_name, preds, fmt='%d')
 
                     t2 = time.time()

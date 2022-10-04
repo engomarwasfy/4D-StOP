@@ -6,7 +6,7 @@ class MOPTEval:
 
     def __init__(self, n_classes, device=None, ignore=None, offset=2 ** 32, min_points=30):
         self.n_classes = n_classes
-        assert (device == None)
+        assert device is None
         self.ignore = np.array(ignore, dtype=np.int64)
         self.include = np.array([n for n in range(self.n_classes) if n not in self.ignore], dtype=np.int64)
 
@@ -172,12 +172,12 @@ def get_MOTSP_metrics(panoptic_buffer, num_stuff, seq_trajectories, class_trajec
 def compute_ids(seq_trajectories, class_trajectories, iou_trajectories, size):
     id_switches = torch.zeros((size,), dtype=torch.double)
     soft_id_switches = torch.zeros((size,), dtype=torch.double)
-    id_fragments = 0  # no use for now
-
     if len(seq_trajectories) != 0:
+        id_fragments = 0  # no use for now
+
         for g, cl, iou in zip(seq_trajectories.values(), class_trajectories.values(), iou_trajectories.values()):
             # all frames of this gt trajectory are not assigned to any detections
-            if all([this == -1 for this in g]):
+            if all(this == -1 for this in g):
                 continue
             # compute tracked frames in trajectory
             last_id = g[0]
