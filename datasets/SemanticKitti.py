@@ -104,9 +104,7 @@ class SemanticKittiDataset(PointCloudDataset):
 
         # Read labels
         # yaml file in the dataset folder in /globalwork/datasets/SemanticKITTI
-        if config.n_frames == 1:
-            config_file = join(self.path, 'semantic-kitti.yaml')
-        elif config.n_frames > 1:
+        if config.n_frames == 1 or config.n_frames > 1:
             config_file = join(self.path, 'semantic-kitti.yaml')
         else:
             raise ValueError('number of frames has to be >= 1')
@@ -122,11 +120,17 @@ class SemanticKittiDataset(PointCloudDataset):
             all_labels = doc['labels']
             learning_map_inv = doc['learning_map_inv']
             learning_map = doc['learning_map']
-            self.learning_map = np.zeros((np.max([k for k in learning_map.keys()]) + 1), dtype=np.int32)
+            self.learning_map = np.zeros(
+                np.max(list(learning_map.keys())) + 1, dtype=np.int32
+            )
+
             for k, v in learning_map.items():
                 self.learning_map[k] = v
 
-            self.learning_map_inv = np.zeros((np.max([k for k in learning_map_inv.keys()]) + 1), dtype=np.int32)
+            self.learning_map_inv = np.zeros(
+                np.max(list(learning_map_inv.keys())) + 1, dtype=np.int32
+            )
+
             for k, v in learning_map_inv.items():
                 self.learning_map_inv[k] = v
 

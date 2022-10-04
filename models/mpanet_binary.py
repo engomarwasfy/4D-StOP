@@ -32,9 +32,9 @@ class MPAnetBinary(nn.Module):
 
         super().__init__()
 
-        print('NumberProposal: ' + str(num_proposal))
-        print('NumberSample: ' + str(nsample))
-        print('NumberSampleSub: ' + str(nsample_sub))
+        print(f'NumberProposal: {str(num_proposal)}')
+        print(f'NumberSample: {str(nsample)}')
+        print(f'NumberSampleSub: {str(nsample_sub)}')
 
         self.num_proposal = num_proposal
         self.nsample = nsample
@@ -78,7 +78,7 @@ class MPAnetBinary(nn.Module):
         self.point_center_regression_loss = torch.tensor(0)
         self.proposal_objectness_loss = torch.tensor(0)
         self.proposal_semantic_loss = torch.tensor(0)
-        self.fp_points_sem_loss = torch.tensor(0) 
+        self.fp_points_sem_loss = torch.tensor(0)
         self.proposal_agg_feature_loss = torch.tensor(0)
         self.proposal_mask_loss = torch.tensor(0)
 
@@ -140,7 +140,7 @@ class MPAnetBinary(nn.Module):
         fp_points_features = fp_points_features.squeeze()
         fp_points_features = torch.transpose(fp_points_features, 0, 1)
         fp_points_sem_classes = self.sem_background_net(fp_points_features)
-        
+
         return proposal_binary_mask, fp_points_sem_classes, proposal_semantic_classes, proposal_aggregation_features, proposal_objectness_scores, proposal_positions, proposal_ids, point_semantic_classes_binary, point_votes, point_objectness_scores
 
 
@@ -165,13 +165,13 @@ class MPAnetBinary(nn.Module):
         target = - torch.ones_like(labels)
         for i, c in enumerate(self.valid_labels):
             target[labels == c] = i
-        
+
         target = target.unsqueeze(0)
 
         fp_target = - torch.ones_like(labels)
         for i in range(9,20):
             fp_target[labels == i] = i - 9
-        
+
         fp_target = fp_target.unsqueeze(0)
 
         fp_points_sem_classes = torch.transpose(fp_points_sem_classes, 0, 1)
@@ -186,143 +186,148 @@ class MPAnetBinary(nn.Module):
         point_semantic_classes_binary = torch.transpose(point_semantic_classes_binary, 0, 1)
         point_semantic_classes_binary = point_semantic_classes_binary.unsqueeze(0)
 
-        
+
         # get ids of points that belongs to an object
         object_points_ids = torch.where(ins_labels != 0)[0]
 
-        if True:
         #if self.pre_train:
-            # PER-POINT SEMANTIC CLASSIFICATION LOSS (cross entropy loss)
-            self.point_semantic_classification_loss = self.criterion(point_semantic_classes_binary, binary_target)
+        # PER-POINT SEMANTIC CLASSIFICATION LOSS (cross entropy loss)
+        self.point_semantic_classification_loss = self.criterion(point_semantic_classes_binary, binary_target)
 
-            # PER-POINT OBJECTNESS LOSS
-            # Not part of 3D-MPA or VoteNet, but used in 4D-PLS
-            # Important to still use it because the per-point objectness scores are used to merge the frames together (4D-Volume Formation)
-            weights = (centers_gt[:, 0] > 0) * 99 + (centers_gt[:, 0] >= 0) * 1
-            self.point_objectness_loss = weighted_mse_loss(point_objectness_scores.squeeze(), centers_gt[:, 0], weights)
+        # PER-POINT OBJECTNESS LOSS
+        # Not part of 3D-MPA or VoteNet, but used in 4D-PLS
+        # Important to still use it because the per-point objectness scores are used to merge the frames together (4D-Volume Formation)
+        weights = (centers_gt[:, 0] > 0) * 99 + (centers_gt[:, 0] >= 0) * 1
+        self.point_objectness_loss = weighted_mse_loss(point_objectness_scores.squeeze(), centers_gt[:, 0], weights)
 
-            
-            if object_points_ids.shape[0] > 0:
-                # Get the GT object center points
-                object_centers_gt = centers_gt[object_points_ids, 4:7]
-                # When we use the offset, we get rounding errors
-                # point_offset_gt = centers_gt[:, 1:4]
-                # object_centers_gt = points[object_points_ids] + point_offset_gt[object_points_ids]
-                # Because of this, we directly use the centers
 
-                # Reshape object_centers_gt and object_radius_gt to have a minibatch size of 1
-                object_centers_gt = object_centers_gt.unsqueeze(0)
+        if object_points_ids.shape[0] > 0:
+            # Get the GT object center points
+            object_centers_gt = centers_gt[object_points_ids, 4:7]
+            # When we use the offset, we get rounding errors
+            # point_offset_gt = centers_gt[:, 1:4]
+            # object_centers_gt = points[object_points_ids] + point_offset_gt[object_points_ids]
+            # Because of this, we directly use the centers
 
-                # PER-POINT CENTER REGRESSION LOSS (3D-MPA)
-                # Only consider points that belongs to an object
-                point_votes = point_votes[:, object_points_ids, :]
-                point_votes_gt = object_centers_gt
-                # L1-Loss
-                # l1_loss = torch.nn.L1Loss(reduction='mean')
-                # point_center_regression_loss = l1_loss(point_votes, point_votes_gt)
-                # Huber-Loss (How to set beta????) Standard: beta = 1
-                huber_loss = torch.nn.SmoothL1Loss()
-                point_center_regression_loss = huber_loss(point_votes.double(), point_votes_gt)
-                self.point_center_regression_loss = point_center_regression_loss
-            
+            # Reshape object_centers_gt and object_radius_gt to have a minibatch size of 1
+            object_centers_gt = object_centers_gt.unsqueeze(0)
 
-        if not self.pre_train:
-            if object_points_ids.shape[0] > 0:
-                # Get the GT object center points
-                object_centers_gt = centers_gt[object_points_ids, 4:7]
-                # When we use the offset, we get rounding errors
-                # point_offset_gt = centers_gt[:, 1:4]
-                # object_centers_gt = points[object_points_ids] + point_offset_gt[object_points_ids]
-                # Because of this, we directly use the centers
+            # PER-POINT CENTER REGRESSION LOSS (3D-MPA)
+            # Only consider points that belongs to an object
+            point_votes = point_votes[:, object_points_ids, :]
+            point_votes_gt = object_centers_gt
+            # L1-Loss
+            # l1_loss = torch.nn.L1Loss(reduction='mean')
+            # point_center_regression_loss = l1_loss(point_votes, point_votes_gt)
+            # Huber-Loss (How to set beta????) Standard: beta = 1
+            huber_loss = torch.nn.SmoothL1Loss()
+            point_center_regression_loss = huber_loss(point_votes.double(), point_votes_gt)
+            self.point_center_regression_loss = point_center_regression_loss
 
-                # Get the GT object radius
-                object_radius_gt = centers_gt[object_points_ids, 7:8]
-                
-                # Get the GT bb size
-                object_bb_sizes_gt = centers_gt[object_points_ids, 8:11]
 
-                # Reshape object_centers_gt and object_radius_gt to have a minibatch size of 1
-                object_centers_gt = object_centers_gt.unsqueeze(0)
-                object_radius_gt = object_radius_gt.unsqueeze(0)
-                object_bb_sizes_gt = object_bb_sizes_gt.unsqueeze(0)
+        if not self.pre_train and object_points_ids.shape[0] > 0:
+            # Get the GT object center points
+            object_centers_gt = centers_gt[object_points_ids, 4:7]
+            # When we use the offset, we get rounding errors
+            # point_offset_gt = centers_gt[:, 1:4]
+            # object_centers_gt = points[object_points_ids] + point_offset_gt[object_points_ids]
+            # Because of this, we directly use the centers
 
-                # We want to know the center, the radius und the semantic classes of the objects later on
-                #object_centers_pos_rad_sem_gt = torch.cat((object_centers_gt, object_radius_gt, target[:, object_points_ids].unsqueeze(2).double()), 2)
-                object_centers_pos_rad_sem_gt = torch.cat((object_centers_gt, object_radius_gt, object_bb_sizes_gt, target[:, object_points_ids].unsqueeze(2).double()), 2)
+            # Get the GT object radius
+            object_radius_gt = centers_gt[object_points_ids, 7:8]
 
-                # Would now have many duplicates. Remove duplicates
-                object_centers_pos_rad_sem_gt = torch.unique(object_centers_pos_rad_sem_gt, dim=1)
+            # Get the GT bb size
+            object_bb_sizes_gt = centers_gt[object_points_ids, 8:11]
 
-                # Remove objects with less than 5 points
-                help_radius_gt = object_centers_pos_rad_sem_gt[:, :, 3]
-                help_radius_gt = help_radius_gt.squeeze()
-                help_ids = torch.where(help_radius_gt != 0)[0]
-                object_centers_pos_rad_sem_gt = object_centers_pos_rad_sem_gt[:, help_ids, :]
+            # Reshape object_centers_gt and object_radius_gt to have a minibatch size of 1
+            object_centers_gt = object_centers_gt.unsqueeze(0)
+            object_radius_gt = object_radius_gt.unsqueeze(0)
+            object_bb_sizes_gt = object_bb_sizes_gt.unsqueeze(0)
 
-                if help_ids.shape[0] > 0:
-                        
-                    # PROPOSAL OBJECTNESS LOSS (VoteNet)
-                    proposal_objectness_loss, proposal_objectness_label, proposal_objectness_mask, proposal_objectness_assignment = compute_objectness_loss(proposal_positions, object_centers_pos_rad_sem_gt[:, :, 0:3], proposal_objectness_scores)
-                    #self.proposal_objectness_loss = proposal_objectness_loss
+            # We want to know the center, the radius und the semantic classes of the objects later on
+            #object_centers_pos_rad_sem_gt = torch.cat((object_centers_gt, object_radius_gt, target[:, object_points_ids].unsqueeze(2).double()), 2)
+            object_centers_pos_rad_sem_gt = torch.cat((object_centers_gt, object_radius_gt, object_bb_sizes_gt, target[:, object_points_ids].unsqueeze(2).double()), 2)
 
-                    # PROPOSAL SEMANTIC LOSS (like in 3D-MPA and VoteNet)
-                    #objects_sem_gt = object_centers_pos_rad_sem_gt[:, :, 4].long()
-                    objects_sem_gt = object_centers_pos_rad_sem_gt[:, :, 7].long()
-                    proposal_sem_gt = torch.gather(objects_sem_gt, 1, proposal_objectness_assignment)  # select (B,K) from (B,K2)
-                    #criterion_sem_cls = nn.CrossEntropyLoss(reduction='none')
-                    ###can get rid of objectness-score with the line below (included in semantic-loss)
-                    ###proposal_sem_gt = torch.where(proposal_objectness_label == 1, proposal_sem_gt, 8) #8 is background label
-                    criterion_sem_cls = nn.CrossEntropyLoss()
-                    proposal_semantic_loss = criterion_sem_cls(proposal_semantic_classes, proposal_sem_gt)  # (B,K)
-                    #proposal_semantic_loss = torch.sum(proposal_semantic_loss * proposal_objectness_label) / (torch.sum(proposal_objectness_label) + 1e-6)
-                    self.proposal_semantic_loss = proposal_semantic_loss
+            # Would now have many duplicates. Remove duplicates
+            object_centers_pos_rad_sem_gt = torch.unique(object_centers_pos_rad_sem_gt, dim=1)
 
-                    # FP-POINTS-SEMANTIC-LOSS
-                    criterion_sem_fp = torch.nn.CrossEntropyLoss(ignore_index=-1)
-                    self.fp_points_sem_loss = criterion_sem_fp(fp_points_sem_classes, fp_target)
+            # Remove objects with less than 5 points
+            help_radius_gt = object_centers_pos_rad_sem_gt[:, :, 3]
+            help_radius_gt = help_radius_gt.squeeze()
+            help_ids = torch.where(help_radius_gt != 0)[0]
+            object_centers_pos_rad_sem_gt = object_centers_pos_rad_sem_gt[:, help_ids, :]
 
-                    # AGGREGATION FEATURE LOSS (3D-MPA)
-                    #object_centers_pos_rad_gt = object_centers_pos_rad_sem_gt[:, :, 0:4]
-                    object_centers_pos_rad_gt = object_centers_pos_rad_sem_gt[:, :, 0:7]
-                    center_rad_gt_closest_object = object_centers_pos_rad_gt[:, proposal_objectness_assignment.squeeze(), :] # would not work like this if batch_size > 1
-                    center_gt_closest_object = center_rad_gt_closest_object[:, :, 0:3]
-                    radius_gt_closest_object = center_rad_gt_closest_object[:, :, 3]
-                    bb_size_gt_closest_object = center_rad_gt_closest_object[:, :, 4:7]
-                    proposal_aggregation_features = torch.transpose(proposal_aggregation_features, 1, 2)
-                    refined_proposal_positions = proposal_positions + proposal_aggregation_features[:, :, 0:3]
-                    huber_loss1 = torch.nn.SmoothL1Loss()
-                    proposal_agg_feature_loss_1 = huber_loss1(refined_proposal_positions.double(), center_gt_closest_object)
-                    print(proposal_agg_feature_loss_1)
-                    proposal_radius = proposal_aggregation_features[:, :, 3]
-                    huber_loss2 = torch.nn.SmoothL1Loss()
-                    proposal_agg_feature_loss_2 = huber_loss2(proposal_radius.double(), radius_gt_closest_object)
-                    print(proposal_agg_feature_loss_2)
-                    proposal_bb_size = proposal_aggregation_features[:, :, 4:7]
-                    huber_loss3 = torch.nn.SmoothL1Loss()
-                    proposal_agg_feature_loss_3 = huber_loss3(proposal_bb_size.double(), bb_size_gt_closest_object)
-                    print(proposal_agg_feature_loss_3)
-                    #self.proposal_agg_feature_loss = proposal_agg_feature_loss_1 + proposal_agg_feature_loss_2
-                    self.proposal_agg_feature_loss = proposal_agg_feature_loss_1 + proposal_agg_feature_loss_2 + proposal_agg_feature_loss_3
-                    #self.proposal_agg_feature_loss = (proposal_agg_feature_loss_1 + proposal_agg_feature_loss_2 + proposal_agg_feature_loss_3) * 0.1
-                    print(self.proposal_agg_feature_loss)
+            if help_ids.shape[0] > 0:
 
-                    # MASK LOSS
-                    if self.use_binary_mask_in_proposal_module:
-                        proposal_points_sem_gt = torch.zeros(proposal_ids.shape, dtype=torch.int64).cuda()
-                        proposal_points_sem_gt[:,:,:] = target[0, proposal_ids[:,:,:]]
-                        proposal_sem_gt_help = proposal_sem_gt
-                        proposal_sem_gt_help = proposal_sem_gt_help.unsqueeze(-1)
-                        proposal_sem_gt_help = proposal_sem_gt_help.expand(-1,-1,proposal_ids.shape[2])
-                        proposal_binary_mask_gt = torch.zeros(proposal_ids.shape, dtype=torch.int64).cuda()
-                        proposal_binary_mask_gt[proposal_points_sem_gt == proposal_sem_gt_help] = 1
-                        criterion_bin_mask_cls1 = nn.CrossEntropyLoss()
-                        proposal_mask_loss1 = criterion_bin_mask_cls1(proposal_binary_mask, proposal_binary_mask_gt)
-                        self.proposal_mask_loss = proposal_mask_loss1
-                        print(self.proposal_mask_loss)
+                # PROPOSAL OBJECTNESS LOSS (VoteNet)
+                proposal_objectness_loss, proposal_objectness_label, proposal_objectness_mask, proposal_objectness_assignment = compute_objectness_loss(proposal_positions, object_centers_pos_rad_sem_gt[:, :, 0:3], proposal_objectness_scores)
+                #self.proposal_objectness_loss = proposal_objectness_loss
 
-        # COMBINED LOSS
-        loss = self.point_semantic_classification_loss + self.point_objectness_loss + self.point_center_regression_loss + self.proposal_objectness_loss + self.proposal_semantic_loss + self.fp_points_sem_loss + self.proposal_agg_feature_loss + self.proposal_mask_loss
-        return loss
+                # PROPOSAL SEMANTIC LOSS (like in 3D-MPA and VoteNet)
+                #objects_sem_gt = object_centers_pos_rad_sem_gt[:, :, 4].long()
+                objects_sem_gt = object_centers_pos_rad_sem_gt[:, :, 7].long()
+                proposal_sem_gt = torch.gather(objects_sem_gt, 1, proposal_objectness_assignment)  # select (B,K) from (B,K2)
+                #criterion_sem_cls = nn.CrossEntropyLoss(reduction='none')
+                ###can get rid of objectness-score with the line below (included in semantic-loss)
+                ###proposal_sem_gt = torch.where(proposal_objectness_label == 1, proposal_sem_gt, 8) #8 is background label
+                criterion_sem_cls = nn.CrossEntropyLoss()
+                proposal_semantic_loss = criterion_sem_cls(proposal_semantic_classes, proposal_sem_gt)  # (B,K)
+                #proposal_semantic_loss = torch.sum(proposal_semantic_loss * proposal_objectness_label) / (torch.sum(proposal_objectness_label) + 1e-6)
+                self.proposal_semantic_loss = proposal_semantic_loss
+
+                # FP-POINTS-SEMANTIC-LOSS
+                criterion_sem_fp = torch.nn.CrossEntropyLoss(ignore_index=-1)
+                self.fp_points_sem_loss = criterion_sem_fp(fp_points_sem_classes, fp_target)
+
+                # AGGREGATION FEATURE LOSS (3D-MPA)
+                #object_centers_pos_rad_gt = object_centers_pos_rad_sem_gt[:, :, 0:4]
+                object_centers_pos_rad_gt = object_centers_pos_rad_sem_gt[:, :, 0:7]
+                center_rad_gt_closest_object = object_centers_pos_rad_gt[:, proposal_objectness_assignment.squeeze(), :] # would not work like this if batch_size > 1
+                center_gt_closest_object = center_rad_gt_closest_object[:, :, 0:3]
+                radius_gt_closest_object = center_rad_gt_closest_object[:, :, 3]
+                bb_size_gt_closest_object = center_rad_gt_closest_object[:, :, 4:7]
+                proposal_aggregation_features = torch.transpose(proposal_aggregation_features, 1, 2)
+                refined_proposal_positions = proposal_positions + proposal_aggregation_features[:, :, 0:3]
+                huber_loss1 = torch.nn.SmoothL1Loss()
+                proposal_agg_feature_loss_1 = huber_loss1(refined_proposal_positions.double(), center_gt_closest_object)
+                print(proposal_agg_feature_loss_1)
+                proposal_radius = proposal_aggregation_features[:, :, 3]
+                huber_loss2 = torch.nn.SmoothL1Loss()
+                proposal_agg_feature_loss_2 = huber_loss2(proposal_radius.double(), radius_gt_closest_object)
+                print(proposal_agg_feature_loss_2)
+                proposal_bb_size = proposal_aggregation_features[:, :, 4:7]
+                huber_loss3 = torch.nn.SmoothL1Loss()
+                proposal_agg_feature_loss_3 = huber_loss3(proposal_bb_size.double(), bb_size_gt_closest_object)
+                print(proposal_agg_feature_loss_3)
+                #self.proposal_agg_feature_loss = proposal_agg_feature_loss_1 + proposal_agg_feature_loss_2
+                self.proposal_agg_feature_loss = proposal_agg_feature_loss_1 + proposal_agg_feature_loss_2 + proposal_agg_feature_loss_3
+                #self.proposal_agg_feature_loss = (proposal_agg_feature_loss_1 + proposal_agg_feature_loss_2 + proposal_agg_feature_loss_3) * 0.1
+                print(self.proposal_agg_feature_loss)
+
+                # MASK LOSS
+                if self.use_binary_mask_in_proposal_module:
+                    proposal_points_sem_gt = torch.zeros(proposal_ids.shape, dtype=torch.int64).cuda()
+                    proposal_points_sem_gt[:,:,:] = target[0, proposal_ids[:,:,:]]
+                    proposal_sem_gt_help = proposal_sem_gt
+                    proposal_sem_gt_help = proposal_sem_gt_help.unsqueeze(-1)
+                    proposal_sem_gt_help = proposal_sem_gt_help.expand(-1,-1,proposal_ids.shape[2])
+                    proposal_binary_mask_gt = torch.zeros(proposal_ids.shape, dtype=torch.int64).cuda()
+                    proposal_binary_mask_gt[proposal_points_sem_gt == proposal_sem_gt_help] = 1
+                    criterion_bin_mask_cls1 = nn.CrossEntropyLoss()
+                    proposal_mask_loss1 = criterion_bin_mask_cls1(proposal_binary_mask, proposal_binary_mask_gt)
+                    self.proposal_mask_loss = proposal_mask_loss1
+                    print(self.proposal_mask_loss)
+
+        return (
+            self.point_semantic_classification_loss
+            + self.point_objectness_loss
+            + self.point_center_regression_loss
+            + self.proposal_objectness_loss
+            + self.proposal_semantic_loss
+            + self.fp_points_sem_loss
+            + self.proposal_agg_feature_loss
+            + self.proposal_mask_loss
+        )
     
         
     def accuracy(self, outputs, labels):
@@ -422,7 +427,7 @@ class MPAnetBinary(nn.Module):
                 point_semantic_classes_new[proposal_ids] = proposals_semantic_classes[index]
                 if prev_ins_id + label > next_ins_id:
                     next_ins_id = prev_ins_id + label
-                
+
         # majority voting
         if use_majority_voting:
             for i in range(prev_ins_id, next_ins_id + 1):
@@ -433,7 +438,7 @@ class MPAnetBinary(nn.Module):
                 bincount = np.bincount(point_semantic_classes_current_instance)
                 most_frequent = bincount.argmax()
                 point_semantic_classes_new[instance_ids] = most_frequent
-        
+
         next_ins_id = next_ins_id + 1 #!!!!!!
 
         return ins_prediction, next_ins_id, proposals_ids, proposals_positions, point_semantic_classes_new, refined_proposals_positions

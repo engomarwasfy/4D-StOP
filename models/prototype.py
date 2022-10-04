@@ -70,7 +70,7 @@ class PrototypeNet(nn.Module):
         point_semantic_classes, point_objectness_scores, point_features = self.backbone_net(batch)
         t_end_backbone_forward_pass = time.time()
         duration_backbone_forward_pass = t_end_backbone_forward_pass - t_start_backbone_forward_pass
-        print('duration_backbone_forward_pass: ' + str(duration_backbone_forward_pass))
+        print(f'duration_backbone_forward_pass: {str(duration_backbone_forward_pass)}')
 
         # Reshape to have a minibatch size of 1
         point_features = torch.transpose(point_features, 0, 1)
@@ -81,7 +81,7 @@ class PrototypeNet(nn.Module):
         point_votes, point_votes_features = self.vgen(point_positions, point_features)
         t_end_vgen_forward_pass = time.time()
         duration_vgen_forward_pass = t_end_vgen_forward_pass - t_start_vgen_forward_pass
-        print('duration_vgen_forward_pass: ' + str(duration_vgen_forward_pass))
+        print(f'duration_vgen_forward_pass: {str(duration_vgen_forward_pass)}')
 
         return point_semantic_classes, point_votes, point_objectness_scores
 
@@ -191,11 +191,11 @@ class PrototypeNet(nn.Module):
         ins_point_votes = point_votes[ins_idxs]
 
         number_proposals = 500
-        print('number_proposals' + str(number_proposals))
+        print(f'number_proposals{number_proposals}')
         radius = 0.6
         #print('radius' + str(radius))
         epsilon = 0.8
-        print('epsilon' + str(epsilon))
+        print(f'epsilon{epsilon}')
         minpts = 1
         use_majority_voting = True
         parallel = False
@@ -220,7 +220,7 @@ class PrototypeNet(nn.Module):
         if not parallel:
             for i in range(number_proposals):
                 proposal_center = proposals_center[i]
-                               
+
                 #with threadpool_limits(limits=1, user_api='blas'):
                 #    associated_points_ids = point_tree.query_ball_point(proposal_center, radius)
                 associated_points_ids = point_tree.query_ball_point(proposal_center, radius)
@@ -264,15 +264,15 @@ class PrototypeNet(nn.Module):
 
         t_finish_prop_generation = time.time()
         duration_prop_generation = t_finish_prop_generation - t_start_prop_generation
-        print('duration_prop_generation: ' + str(duration_prop_generation))
-        
+        print(f'duration_prop_generation: {str(duration_prop_generation)}')
+
         # Proposal Clustering with DBScan
         clustering_inputs = proposals_center
         t_start_clustering = time.time()
         clustering_outputs = DBSCAN(eps=epsilon, min_samples=minpts).fit_predict(clustering_inputs)
         t_finish_clustering = time.time()
         duration_clustering = t_finish_clustering - t_start_clustering
-        print('duration_clustering: ' + str(duration_clustering))
+        print(f'duration_clustering: {str(duration_clustering)}')
 
 
         new_ins_id = ins_id
@@ -283,13 +283,13 @@ class PrototypeNet(nn.Module):
                 #proposal_ids = np.where((proposals[index[0]] == 1))
                 #proposal_ids = np.where((proposals[index[0]] == 1) & (ins_prediction == 0))
                 proposal_ids = proposals[index[0]]
-                proposal_ids = proposal_ids[0:5000]
+                proposal_ids = proposal_ids[:5000]
                 ins_prediction[proposal_ids] = ins_id + label
                 if ins_id + label > new_ins_id:
                     new_ins_id = ins_id + label
         t_finish_id_assoc = time.time()
         duration_id_assoc = t_finish_id_assoc - t_start_id_assoc
-        print('duration_id_assoc: ' + str(duration_id_assoc))
+        print(f'duration_id_assoc: {str(duration_id_assoc)}')
 
         # majority voting
         if use_majority_voting:
@@ -304,7 +304,7 @@ class PrototypeNet(nn.Module):
                 point_semantic_classes[instance_ids] = most_frequent
             t_finish_mv = time.time()
             duration_mv = t_finish_mv - t_start_mv
-            print('duration_mv :' + str(duration_mv))
+            print(f'duration_mv :{str(duration_mv)}')
 
 
         new_ins_id += 1
@@ -335,7 +335,7 @@ class PrototypeNet(nn.Module):
         proposals = []
         proposal = np.zeros(ins_prediction.shape, np.int8)
         proposals_center = []
-        
+
         final_objects_ids = []
         proposals_associated_ids = []
 
@@ -352,9 +352,7 @@ class PrototypeNet(nn.Module):
 
         proposals_ids = np.random.choice(ins_idxs, number_proposals)
 
-        i = 0
-
-        while i < number_proposals:
+        for i in range(number_proposals):
             proposal_center = point_votes[proposals_ids[i]]
             point_tree = cKDTree(ins_point_votes)
             associated_points_ids = point_tree.query_ball_point(proposal_center, radius)
@@ -366,9 +364,6 @@ class PrototypeNet(nn.Module):
             proposal_help = proposal.copy()
             proposal_help[associated_points_ids] = 1
             proposals.append(proposal_help)
-        
-            i += 1
-
 
         for i1, proposal_associated_ids in enumerate(proposals_associated_ids):
             if i1 == 0:
@@ -388,7 +383,7 @@ class PrototypeNet(nn.Module):
 
 
         prev_ins_id = next_ins_id
-        for i, instance_ids in enumerate(final_objects_ids):
+        for instance_ids in final_objects_ids:
             ins_prediction[instance_ids] = next_ins_id
             next_ins_id += 1
 

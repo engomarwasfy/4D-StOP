@@ -23,11 +23,11 @@ for seq in sequences:
     poses_f64 = parse_poses(pose_file, calibration)
     #poses_f64 = parse_poses_nuscene(pose_file)
     poses = ([pose.astype(np.float32) for pose in poses_f64])
-    print('Processing sequence:' + seq)
+    print(f'Processing sequence:{seq}')
     for idx, frame in enumerate(frames):
-        velo_file = join(seq_path, 'velodyne', frame + '.npy')
-        label_file = join(seq_path, 'labels', frame + '.npy')
-        save_path = join(seq_path, 'labels', frame + '.center')
+        velo_file = join(seq_path, 'velodyne', f'{frame}.npy')
+        label_file = join(seq_path, 'labels', f'{frame}.npy')
+        save_path = join(seq_path, 'labels', f'{frame}.center')
         frame_labels = np.load(label_file)
         frame_labels = frame_labels.astype(np.int32)
         #ins_labels = frame_labels & 0xFFFF0000
@@ -41,7 +41,7 @@ for seq in sequences:
         sem_ins_labels = np.unique(ins_labels)
         center_labels = np.zeros((new_points.shape[0], 1))
 
-        for _, semins in enumerate(sem_ins_labels):
+        for semins in sem_ins_labels:
             valid_ind = np.argwhere(ins_labels == semins)[:, 0]
             if semins == 0 or valid_ind.shape[0] < 5:  # background classes and small groups
                 continue

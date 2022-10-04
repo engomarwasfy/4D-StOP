@@ -32,7 +32,7 @@ def model_choice(chosen_log):
 
     # Check if log exists
     if not os.path.exists(chosen_log):
-        raise ValueError('The given log does not exists: ' + chosen_log)
+        raise ValueError(f'The given log does not exists: {chosen_log}')
 
     return chosen_log
 
@@ -65,15 +65,7 @@ if __name__ == '__main__':
     # Deal with 'last_XXXXXX' choices
     chosen_log = model_choice(chosen_log)
 
-    ############################
-    # Initialize the environment
-    ############################
-
-    # Set which gpu is going to be used
-    GPU_ID = '0'
-    if torch.cuda.device_count() > 1:
-        GPU_ID = '0, 1'
-
+    GPU_ID = '0, 1' if torch.cuda.device_count() > 1 else '0'
     ###############
     # Previous chkp
     ###############
@@ -106,8 +98,7 @@ if __name__ == '__main__':
     #config.n_frames = 2
     config.n_test_frames = 4
     #config.n_test_frames = 2
-    if config.n_frames < config.n_test_frames:
-        config.n_frames = config.n_test_frames
+    config.n_frames = max(config.n_frames, config.n_test_frames)
     config.big_gpu = True
     config.dataset_task = '4d_panoptic'
     #config.sampling = 'density'
@@ -129,19 +120,13 @@ if __name__ == '__main__':
     print('Data Preparation')
     print('****************')
 
-    if on_val:
-        set = 'validation'
-    else:
-        set = 'test'
+    set = 'validation' if on_val else 'test'
+    if config.dataset != 'SemanticKitti':
+        raise ValueError(f'Unsupported dataset : {config.dataset}')
 
-    # Initiate dataset
-    if config.dataset == 'SemanticKitti':
-        test_dataset = SemanticKittiDataset(config, set=set, balance_classes=False, seqential_batch=True)
-        test_sampler = SemanticKittiSampler(test_dataset)
-        collate_fn = SemanticKittiCollate
-    else:
-        raise ValueError('Unsupported dataset : ' + config.dataset)
-
+    test_dataset = SemanticKittiDataset(config, set=set, balance_classes=False, seqential_batch=True)
+    test_sampler = SemanticKittiSampler(test_dataset)
+    collate_fn = SemanticKittiCollate
     # Data loader
     test_loader = DataLoader(test_dataset,
                              batch_size=1,
@@ -170,9 +155,9 @@ if __name__ == '__main__':
 
     print('\nStart test')
     print('**********\n')
-    
+
     config.dataset_task = '4d_panoptic'
-    
+
     # Testing
 
     #tester.panoptic_4d_test(net, test_loader, config)

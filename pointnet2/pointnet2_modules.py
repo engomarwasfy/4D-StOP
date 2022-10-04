@@ -207,13 +207,13 @@ class PointnetSAModuleVotes(nn.Module):
             self.grouper = pointnet2_utils.GroupAll(use_xyz, ret_grouped_xyz=True)
 
         mlp_spec = mlp
-        if use_xyz and len(mlp_spec)>0:
+        if use_xyz and mlp_spec:
             mlp_spec[0] += 3
         self.mlp_module = pt_utils.SharedMLP(mlp_spec, bn=bn)
 
         if use_binary_mask:#
             mlp_spec_binary_mask = mlp_binary_mask#
-            if use_xyz and len(mlp_spec_binary_mask)>0:#
+            if use_xyz and mlp_spec_binary_mask:#
                 mlp_spec_binary_mask[0] += 3#
             self.mlp_module_binary_mask = pt_utils.SharedMLP(mlp_spec_binary_mask, bn=bn)#
 
@@ -289,12 +289,11 @@ class PointnetSAModuleVotes(nn.Module):
 
         new_features = new_features.squeeze(-1)  # (B, mlp[-1], npoint)
 
-        if not self.ret_unique_cnt:
-            #return new_xyz, new_features, inds, idx
-            return new_xyz, new_features, inds, idx, proposal_binary_mask#
-        else:
-            #return new_xyz, new_features, inds, unique_cnt, idx
-            return new_xyz, new_features, inds, unique_cnt, idx, proposal_binary_mask#
+        return (
+            (new_xyz, new_features, inds, unique_cnt, idx, proposal_binary_mask)
+            if self.ret_unique_cnt
+            else (new_xyz, new_features, inds, idx, proposal_binary_mask)
+        )
 
 class PointnetSAModuleMSGVotes(nn.Module):
     ''' Modified based on _PointnetSAModuleBase and PointnetSAModuleMSG
@@ -426,8 +425,9 @@ class PointnetFPModule(nn.Module):
             )
         else:
             interpolated_feats = known_feats.expand(
-                *known_feats.size()[0:2], unknown.size(1)
+                *known_feats.size()[:2], unknown.size(1)
             )
+
 
         if unknow_feats is not None:
             new_features = torch.cat([interpolated_feats, unknow_feats],
@@ -458,7 +458,7 @@ class PointnetLFPModuleMSG(nn.Module):
         super().__init__()
 
         assert(len(mlps) == len(nsamples) == len(radii))
-        
+
         self.post_mlp = pt_utils.SharedMLP(post_mlp, bn=bn)
 
         self.groupers = nn.ModuleList()

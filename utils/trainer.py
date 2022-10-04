@@ -61,8 +61,18 @@ class ModelTrainer:
         # During Pre-Training
         var_params = [v for k, v in net.named_parameters() if 'head_var' in k]
         # Optimizer with specific learning rate for deformable KPConv
-        deform_params = [v for k, v in net.named_parameters() if 'offset' in k and not 'head_var' in k]
-        other_params = [v for k, v in net.named_parameters() if 'offset' not in k and not 'head_var' in k]
+        deform_params = [
+            v
+            for k, v in net.named_parameters()
+            if 'offset' in k and 'head_var' not in k
+        ]
+
+        other_params = [
+            v
+            for k, v in net.named_parameters()
+            if 'offset' not in k and 'head_var' not in k
+        ]
+
         deform_lr = config.learning_rate * config.deform_lr_factor
         var_lr =  1e-3
         self.optimizer = torch.optim.SGD([{'params': other_params},
@@ -88,17 +98,17 @@ class ModelTrainer:
             if finetune:
                 checkpoint = torch.load(chkp_path)
                 if checkpoint['model_state_dict']['head_var.mlp.weight'].shape[0] == \
-                        checkpoint['model_state_dict']['head_var.mlp.weight'].shape[1] and config.free_dim != 0:
+                            checkpoint['model_state_dict']['head_var.mlp.weight'].shape[1] and config.free_dim != 0:
                     checkpoint['model_state_dict']['head_var.mlp.weight'] = net.head_var.mlp.weight
                     checkpoint['model_state_dict']['head_var.batch_norm.bias'] = net.head_var.batch_norm.bias
 
                 if checkpoint['model_state_dict']['head_var.mlp.weight'].shape[0] -  \
-                    checkpoint['model_state_dict']['head_var.mlp.weight'].shape[1] != config.free_dim:
+                        checkpoint['model_state_dict']['head_var.mlp.weight'].shape[1] != config.free_dim:
                     checkpoint['model_state_dict']['head_var.mlp.weight'] = net.head_var.mlp.weight
                     checkpoint['model_state_dict']['head_var.batch_norm.bias'] = net.head_var.batch_norm.bias
 
                 if checkpoint['model_state_dict']['head_var.mlp.weight'].shape[0] != net.head_var.mlp.weight.shape[0] \
-                        or checkpoint['model_state_dict']['head_var.mlp.weight'].shape[1] !=net.head_var.mlp.weight.shape[1]:
+                            or checkpoint['model_state_dict']['head_var.mlp.weight'].shape[1] !=net.head_var.mlp.weight.shape[1]:
                     checkpoint['model_state_dict']['head_var.mlp.weight'] = net.head_var.mlp.weight
                     checkpoint['model_state_dict']['head_var.batch_norm.bias'] = net.head_var.batch_norm.bias
 
@@ -112,31 +122,28 @@ class ModelTrainer:
             elif config.freeze:
                 checkpoint = torch.load(chkp_path)
                 pretrained_dict = checkpoint['model_state_dict']
-                net_dict = net.state_dict() 
+                net_dict = net.state_dict()
                 pretrained_dict = {k: v for k, v in pretrained_dict.items() if "pnet" not in k}
                 net_dict.update(pretrained_dict)
                 net.load_state_dict(pretrained_dict, strict=False)
                 #net.load_state_dict(checkpoint['model_state_dict'])
                 #net.load_state_dict(checkpoint['model_state_dict'], strict=False)
                 net.train()
-                child_counter = 0
-                for child in net.children():
+                for child_counter, child in enumerate(net.children()):
                     if child_counter < 2:
                         for param in child.parameters():
                             param.requires_grad = False
                         for module in child.modules():
-                            if isinstance(module, nn.BatchNorm1d) or isinstance(module, BatchNormBlock):
+                            if isinstance(
+                                module, (nn.BatchNorm1d, BatchNormBlock)
+                            ):
                                 module.eval()
-                    child_counter += 1  
                 self.optimizer = torch.optim.SGD(filter(lambda p: p.requires_grad, net.parameters()), lr=config.learning_rate)
-                #self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-                child_counter = 0
-                for child in net.children():
+                for child_counter, child in enumerate(net.children()):
                     print(" child", child_counter, "is -")
                     print(child)
                     for param in child.parameters():
                         print(param.requires_grad)
-                    child_counter += 1  
                 self.epoch = checkpoint['epoch']
                 #net.train()
                 print("Model and training state restored.")
@@ -197,8 +204,7 @@ class ModelTrainer:
 
 
         # Start training loop
-        for epoch in range(config.max_epoch):
-
+        for _ in range(config.max_epoch):
             self.step = 0
             acc_summed = 0
             loss_summed = 0
@@ -251,10 +257,11 @@ class ModelTrainer:
                 t += [time.time()]
 
                 # Average timing
-                if self.step < 2:
-                    mean_dt = np.array(t[1:]) - np.array(t[:-1])
-                else:
-                    mean_dt = 0.9 * mean_dt + 0.1 * (np.array(t[1:]) - np.array(t[:-1]))
+                mean_dt = (
+                    np.array(t[1:]) - np.array(t[:-1])
+                    if self.step < 2
+                    else 0.9 * mean_dt + 0.1 * (np.array(t[1:]) - np.array(t[:-1]))
+                )
 
                 # Console display (only one per second)
                 if (t[-1] - last_display) > 1.0:
@@ -294,11 +301,8 @@ class ModelTrainer:
             writer.add_scalar("Instance_Loss", instance_loss_summed/config.epoch_steps, self.epoch+1)
             writer.add_scalar("Variance_Loss", variance_loss_summed/config.epoch_steps, self.epoch+1)
             writer.add_scalar("Accuracy", acc_summed/config.epoch_steps, self.epoch+1)
-            i = 0
-            for param_group in self.optimizer.param_groups:
-                writer.add_scalar("Learning_Rate_" + str(i), param_group['lr'], self.epoch+1)
-                i += 1
-
+            for i, param_group in enumerate(self.optimizer.param_groups):
+                writer.add_scalar(f"Learning_Rate_{str(i)}", param_group['lr'], self.epoch+1)
             # Update learning rate
             if self.epoch in config.lr_decays:
                 for param_group in self.optimizer.param_groups:
@@ -328,11 +332,11 @@ class ModelTrainer:
             #    self.optimizer.zero_grad()
             #    self.validation(net, val_loader, config)
             #    net.train()
-            
+
             # Update epoch
             self.epoch += 1
 
-        
+
         writer.flush()
         writer.close()
 

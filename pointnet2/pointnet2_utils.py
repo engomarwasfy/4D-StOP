@@ -4,6 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 ''' Modified based on: https://github.com/erikwijmans/Pointnet2_PyTorch '''
+
 from __future__ import (
     division,
     absolute_import,
@@ -32,10 +33,6 @@ except ImportError:
             "Please see the setup instructions in the README: "
             "https://github.com/erikwijmans/Pointnet2_PyTorch/blob/master/README.rst"
         )
-
-if False:
-    # Workaround for type hints without depending on the `typing` module
-    from typing import *
 
 
 class RandomDropout(nn.Module):
@@ -372,10 +369,7 @@ class QueryAndGroup(nn.Module):
         if self.ret_unique_cnt:
             ret.append(unique_cnt)
         ret.append(idx)
-        if len(ret) == 1:
-            return ret[0]
-        else:
-            return tuple(ret)
+        return ret[0] if len(ret) == 1 else tuple(ret)
 
 
 class GroupAll(nn.Module):
@@ -421,7 +415,4 @@ class GroupAll(nn.Module):
         else:
             new_features = grouped_xyz
 
-        if self.ret_grouped_xyz:
-            return new_features, grouped_xyz
-        else:
-            return new_features
+        return (new_features, grouped_xyz) if self.ret_grouped_xyz else new_features

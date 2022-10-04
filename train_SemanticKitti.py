@@ -12,12 +12,6 @@ from models.mpanet import MPAnet
 from models.prototype import PrototypeNet
 from models.mpanet_binary import MPAnetBinary
 
-# ----------------------------------------------------------------------------------------------------------------------
-#
-#           Config Class
-#       \******************/
-#
-
 class SemanticKittiConfig(Config):
     """
     Override the parameters you want to modify for this dataset
@@ -228,15 +222,7 @@ if __name__ == '__main__':
 
     print(torch.__version__)
 
-    ############################
-    # Initialize the environment
-    ############################
-
-    # Set which gpu is going to be used
-    GPU_ID = '0'
-    if torch.cuda.device_count() > 1:
-        GPU_ID = '0, 1'
-
+    GPU_ID = '0, 1' if torch.cuda.device_count() > 1 else '0'
     # Set GPU visible device
     os.environ['CUDA_VISIBLE_DEVICES'] = GPU_ID
 
@@ -356,14 +342,7 @@ if __name__ == '__main__':
     #print("Prototype")
     net = MPAnet(config, training_dataset.label_values, training_dataset.ignored_labels)
     print("MPANet")
-    #net = MPAnetBinary(config, training_dataset.label_values, training_dataset.ignored_labels)
-    #print("MPANetBinary")
-
-    # Define a trainer class
-    if previous_training_path:
-        trainer = ModelTrainer(net, config, chkp_path=chosen_chkp)
-    else:
-        trainer = ModelTrainer(net, config, chkp_path=chosen_chkp)
+    trainer = ModelTrainer(net, config, chkp_path=chosen_chkp)
     print('Done in {:.1f}s\n'.format(time.time() - t1))
 
     print('\nStart training')

@@ -151,7 +151,7 @@ def spherical_Lloyd(radius, num_cells, dimension=3, fixed='center', approximatio
 
     # Only points inside the sphere are used
     d2 = np.sum(np.power(X, 2), axis=1)
-    X = X[d2 < radius0 * radius0, :]
+    X = X[d2 < radius0**2, :]
 
     #####################
     # Kernel optimization
@@ -169,7 +169,7 @@ def spherical_Lloyd(radius, num_cells, dimension=3, fixed='center', approximatio
         if approximation == 'monte-carlo':
             X = np.random.rand(approx_n, dimension) * 2 * radius0 - radius0
             d2 = np.sum(np.power(X, 2), axis=1)
-            X = X[d2 < radius0 * radius0, :]
+            X = X[d2 < radius0**2, :]
 
         # Get the distances matrix [n_approx, K, dim]
         differences = np.expand_dims(X, 1) - kernel_points

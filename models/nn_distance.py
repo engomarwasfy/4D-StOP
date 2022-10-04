@@ -27,8 +27,7 @@ def huber_loss(error, delta=1.0):
     # quadratic = torch.min(abs_error, torch.FloatTensor([delta]))
     quadratic = torch.clamp(abs_error, max=delta)
     linear = (abs_error - quadratic)
-    loss = 0.5 * quadratic ** 2 + delta * linear
-    return loss
+    return 0.5 * quadratic ** 2 + delta * linear
 
 
 def nn_distance(pc1, pc2, l1smooth=False, delta=1.0, l1=False):

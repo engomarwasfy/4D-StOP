@@ -21,11 +21,11 @@ for seq in sequences:
     calibration = parse_calibration(calib_file)
     poses_f64 = parse_poses(pose_file, calibration)
     poses = ([pose.astype(np.float32) for pose in poses_f64])
-    print('Processing sequence:' + seq)
+    print(f'Processing sequence:{seq}')
     for idx, frame in enumerate(frames):
-        velo_file = join(seq_path, 'velodyne', frame + '.bin')
-        label_file = join(seq_path, 'labels', frame + '.label')
-        save_path = join(seq_path, 'labels', frame + '.center')
+        velo_file = join(seq_path, 'velodyne', f'{frame}.bin')
+        label_file = join(seq_path, 'labels', f'{frame}.label')
+        save_path = join(seq_path, 'labels', f'{frame}.center')
         frame_labels = np.fromfile(label_file, dtype=np.int32)
         ins_labels = frame_labels & 0xFFFF0000
         pose = poses[idx]
@@ -38,7 +38,7 @@ for seq in sequences:
         #center_labels = np.zeros((new_points.shape[0], 7))
         center_labels = np.zeros((new_points.shape[0], 1))
 
-        for _, semins in enumerate(sem_ins_labels):
+        for semins in sem_ins_labels:
             valid_ind = np.argwhere(ins_labels == semins)[:, 0]
             if semins == 0 or valid_ind.shape[0] < 5:  # background classes and small groups
                 continue
@@ -57,9 +57,4 @@ for seq in sequences:
             gaussians = multivariate_normal.pdf(new_points[valid_ind, 0:3], mean=center_point[0, :3], cov=covariance)
             gaussians = (gaussians - min(gaussians)) / (max(gaussians) - min(gaussians))
             center_labels[valid_ind, 0] = gaussians  # first loc score for centerness
-            #center_labels[valid_ind, 1:4] = center_point[0, :3] - new_points[valid_ind, 0:3]  # last 3 for offset to center
-            
-            #Added by me
-            #center_labels[valid_ind, 4:7] = center_point[0, :3]
-
         np.save(save_path, center_labels)

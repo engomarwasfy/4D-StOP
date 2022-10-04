@@ -212,7 +212,12 @@ class Config:
         for block_i, block in enumerate(arch):
 
             # Get all blocks of the layer
-            if not ('pool' in block or 'strided' in block or 'global' in block or 'upsample' in block):
+            if (
+                'pool' not in block
+                and 'strided' not in block
+                and 'global' not in block
+                and 'upsample' not in block
+            ):
                 layer_blocks += [block]
                 continue
 
@@ -220,13 +225,13 @@ class Config:
             # *****************************
 
             deform_layer = False
-            if layer_blocks:
-                if np.any(['deformable' in blck for blck in layer_blocks]):
-                    deform_layer = True
+            if layer_blocks and np.any(
+                ['deformable' in blck for blck in layer_blocks]
+            ):
+                deform_layer = True
 
-            if 'pool' in block or 'strided' in block:
-                if 'deformable' in block:
-                    deform_layer = True
+            if ('pool' in block or 'strided' in block) and 'deformable' in block:
+                deform_layer = True
 
             self.deform_layers += [deform_layer]
             layer_blocks = []
@@ -253,7 +258,7 @@ class Config:
                     self.lr_decays = {int(b.split(':')[0]): float(b.split(':')[1]) for b in line_info[2:]}
 
                 elif line_info[0] == 'architecture':
-                    self.architecture = [b for b in line_info[2:]]
+                    self.architecture = list(line_info[2:])
 
                 elif line_info[0] == 'augment_symmetries':
                     self.augment_symmetries = [bool(int(b)) for b in line_info[2:]]
@@ -342,7 +347,7 @@ class Config:
             text_file.write('# Training parameters\n')
             text_file.write('# *******************\n\n')
 
-            text_file.write('pre_training = {}\n'.format('True' if self.pre_train else 'False'))
+            text_file.write(f"pre_training = {'True' if self.pre_train else 'False'}\n")
 
             text_file.write('learning_rate = {:f}\n'.format(self.learning_rate))
             text_file.write('momentum = {:f}\n'.format(self.momentum))

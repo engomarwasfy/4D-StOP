@@ -24,15 +24,16 @@ class SharedMLP(nn.Sequential):
 
         for i in range(len(args) - 1):
             self.add_module(
-                name + 'layer{}'.format(i),
+                f'{name}layer{i}',
                 Conv2d(
                     args[i],
                     args[i + 1],
                     bn=(not first or not preact or (i != 0)) and bn,
                     activation=activation
-                    if (not first or not preact or (i != 0)) else None,
-                    preact=preact
-                )
+                    if (not first or not preact or (i != 0))
+                    else None,
+                    preact=preact,
+                ),
             )
 
 
@@ -40,7 +41,7 @@ class _BNBase(nn.Sequential):
 
     def __init__(self, in_size, batch_norm=None, name=""):
         super().__init__()
-        self.add_module(name + "bn", batch_norm(in_size))
+        self.add_module(f"{name}bn", batch_norm(in_size))
 
         nn.init.constant_(self[0].weight, 1.0)
         nn.init.constant_(self[0].bias, 0)
@@ -98,26 +99,22 @@ class _ConvBase(nn.Sequential):
             nn.init.constant_(conv_unit.bias, 0)
 
         if bn:
-            if not preact:
-                bn_unit = batch_norm(out_size)
-            else:
-                bn_unit = batch_norm(in_size)
-
+            bn_unit = batch_norm(in_size) if preact else batch_norm(out_size)
         if preact:
             if bn:
-                self.add_module(name + 'bn', bn_unit)
+                self.add_module(f'{name}bn', bn_unit)
 
             if activation is not None:
-                self.add_module(name + 'activation', activation)
+                self.add_module(f'{name}activation', activation)
 
-        self.add_module(name + 'conv', conv_unit)
+        self.add_module(f'{name}conv', conv_unit)
 
         if not preact:
             if bn:
-                self.add_module(name + 'bn', bn_unit)
+                self.add_module(f'{name}bn', bn_unit)
 
             if activation is not None:
-                self.add_module(name + 'activation', activation)
+                self.add_module(f'{name}activation', activation)
 
 
 class Conv1d(_ConvBase):
@@ -245,19 +242,19 @@ class FC(nn.Sequential):
 
         if preact:
             if bn:
-                self.add_module(name + 'bn', BatchNorm1d(in_size))
+                self.add_module(f'{name}bn', BatchNorm1d(in_size))
 
             if activation is not None:
-                self.add_module(name + 'activation', activation)
+                self.add_module(f'{name}activation', activation)
 
-        self.add_module(name + 'fc', fc)
+        self.add_module(f'{name}fc', fc)
 
         if not preact:
             if bn:
-                self.add_module(name + 'bn', BatchNorm1d(out_size))
+                self.add_module(f'{name}bn', BatchNorm1d(out_size))
 
             if activation is not None:
-                self.add_module(name + 'activation', activation)
+                self.add_module(f'{name}activation', activation)
 
 def set_bn_momentum_default(bn_momentum):
 
@@ -276,10 +273,9 @@ class BNMomentumScheduler(object):
     ):
         if not isinstance(model, nn.Module):
             raise RuntimeError(
-                "Class '{}' is not a PyTorch nn Module".format(
-                    type(model).__name__
-                )
+                f"Class '{type(model).__name__}' is not a PyTorch nn Module"
             )
+
 
         self.model = model
         self.setter = setter
